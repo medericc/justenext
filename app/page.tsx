@@ -78,25 +78,45 @@ export default function Page() {
 
   const width = useWindowWidth()
   const isDesktop = width >= 960
+function startNewDeck() {
+  if (!selectedCategory) return
 
-  useEffect(() => {
-    // if category is selected, prepare deck but don't start yet
-    if (selectedCategory) {
-      const pick = sampleN(selectedCategory.words, 13)
-      setDeck(pick)
-      setCurrentIndex(0)
-      setPoints(0)
-      setCardsRemaining(13)
-      setWordVisible(true)
-      setMessage('Prêt à lancer la partie')
-    }
-  }, [selectedCategory])
+  const pick = sampleN(selectedCategory.words, 13)
+  setDeck(pick)
+  setCurrentIndex(0)
+  setPoints(0)
+  setCardsRemaining(13)
+  setWordVisible(true)
+  setMessage('Prêt à lancer la partie')
+}
+ useEffect(() => {
+  if (!selectedCategory) return
 
-  function startGame() {
-    if (!selectedCategory) return
-    setGameStarted(true)
-    setMessage('Partie en cours')
-  }
+  // empêche le setState sync direct dans l’effet
+  queueMicrotask(() => {
+    startNewDeck()
+  })
+
+}, [selectedCategory])
+
+
+function startGame() {
+  if (!selectedCategory) return
+
+  // créer un nouveau deck ici !
+  const pick = sampleN(selectedCategory.words, 13)
+  setDeck(pick)
+
+  setCurrentIndex(0)
+  setPoints(0)
+  setCardsRemaining(13)
+  setWordVisible(true)
+
+  setGameStarted(true)
+  setMessage('Partie en cours')
+  setShowEndModal(false)
+}
+
 
   function resetGame() {
     if (!selectedCategory) return
@@ -142,197 +162,169 @@ export default function Page() {
     return `Juste Un — ${selectedCategory.name}`
   }, [selectedCategory])
 
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-white to-slate-50 text-slate-900 flex flex-col">
-      {/* Header */}
-      <header className="w-full sticky top-0 z-20 backdrop-blur bg-white/60 border-b border-slate-200">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-sky-500 to-indigo-500 flex items-center justify-center text-white font-bold text-lg">JU</div>
-              <div>
-                <h1 className="text-lg font-semibold">Juste Un</h1>
-                <p className="text-xs text-slate-500">Mobile-first · responsive · Next.js 15</p>
-              </div>
-            </div>
-
-            <div className="hidden md:flex items-center gap-3">
-              <span className="text-sm text-slate-600">{windowTitle}</span>
-              <button
-                className="px-3 py-1 rounded-md bg-sky-100 text-sky-700 text-sm"
-                onClick={() => {
-                  setSelectedCategory(null)
-                  setGameStarted(false)
-                  setDeck([])
-                }}
-              >
-                Réinitialiser
-              </button>
-            </div>
-          </div>
-        </div>
-      </header>
+    
 
       {/* Main content */}
-      <main className="flex-1 w-full">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Left column: controls */}
-            <aside className="md:col-span-1">
-              <div className="bg-white/80 border rounded-2xl p-4 shadow-sm sticky top-24">
-                <h2 className="text-base font-semibold mb-2">Catégories</h2>
-                <div className="grid grid-cols-3 md:grid-cols-1 gap-2">
-                  {CATEGORIES.map((c) => (
-                    <button
-                      key={c.key}
-                      onClick={() => {
-                        setSelectedCategory(c.key === 'home' ? null : c)
-                        setActiveTab(c.key)
-                        setGameStarted(false)
-                        setShowEndModal(false)
-                      }}
-                      className={`px-3 py-2 rounded-lg text-sm text-left shadow-sm border ${selectedCategory?.key === c.key ? 'bg-sky-500 text-white border-sky-600' : 'bg-white text-slate-700'}`}
-                    >
-                      {c.name}
-                    </button>
-                  ))}
-                </div>
+  <main className="flex-1 w-full">
+  <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
-                <div className="mt-4">
-                  <h3 className="text-sm font-medium">Choix rapide</h3>
-                  <p className="text-xs text-slate-500">Sélectionne une catégorie puis lance une partie de 13 mots.</p>
-                  <div className="mt-3 flex gap-2">
-                    <button
-                      className="flex-1 px-3 py-2 rounded-lg bg-sky-600 text-white text-sm"
-                      onClick={startGame}
-                      disabled={!selectedCategory || gameStarted}
-                    >
-                      Lancer
-                    </button>
-                    <button
-                      className="px-3 py-2 rounded-lg bg-white border text-sm"
-                      onClick={resetGame}
-                    >
-                      Reset
-                    </button>
-                  </div>
-                </div>
+    {/* ==================== ACCUEIL (catégories + choix rapide + règles) ==================== */}
+    {!gameStarted && (
+      <div className="flex flex-col gap-8">
 
-                <div className="mt-4 text-sm">
-                  <p>Statut: <span className="font-medium">{message}</span></p>
-                  <p>Points: <span className="font-semibold">{points}</span></p>
-                  <p>Cartes restantes: <span className="font-semibold">{cardsRemaining}</span></p>
-                </div>
-              </div>
-
-              {/* small help card */}
-              <div className="mt-4 hidden md:block">
-                <div className="bg-gradient-to-r from-sky-50 to-white border rounded-2xl p-4">
-                  <h4 className="font-semibold">Règles rapides</h4>
-                  <ol className="text-sm text-slate-600 mt-2 space-y-1 list-decimal list-inside">
-                    <li>Un joueur devine le mot, les autres donnent un indice chacun.</li>
-                    <li>Indices identiques sont éliminés.</li>
-                    <li>Réussi: +1 point — Échouer: -2 cartes — Passer: -1 carte.</li>
-                    <li>Objectif: garder un maximum de cartes (13 max).</li>
-                  </ol>
-                </div>
-              </div>
-            </aside>
-
-            {/* Middle column: game / home */}
-            <section className="md:col-span-2">
-              {!selectedCategory && (
-                <div className="bg-white rounded-2xl p-6 shadow-md">
-                  <h2 className="text-2xl font-bold">Bienvenue sur Juste Un</h2>
-                  <p className="mt-3 text-slate-600">Choisis une catégorie sur la gauche (ou en bas sur mobile) puis clique sur <strong>Lancer</strong> pour démarrer une partie de 13 mots.</p>
-
-                  <div className="mt-6 grid grid-cols-2 sm:grid-cols-3 gap-3">
-                    {CATEGORIES.filter(c => c.key !== 'home').slice(0,6).map(c => (
-                      <div key={c.key} className="p-3 rounded-xl border bg-white/50">
-                        <h3 className="text-sm font-semibold">{c.name}</h3>
-                        <p className="text-xs text-slate-500 mt-1">{c.words.length} mots</p>
-                        <button className="mt-3 w-full py-2 rounded-md bg-sky-100 text-sky-700 text-sm" onClick={() => { setSelectedCategory(c); setActiveTab(c.key)}}>Sélectionner</button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {selectedCategory && (
-                <div className="bg-white rounded-2xl p-6 shadow-md">
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                    <div>
-                      <h2 className="text-2xl font-bold">{selectedCategory.name}</h2>
-                      <p className="text-sm text-slate-600">{deck.length} mots dans la sélection</p>
-                    </div>
-
-                    <div className="flex items-center gap-3">
-                      <div className="text-sm text-slate-600">Cartes: <span className="font-semibold">{cardsRemaining}</span></div>
-                      <div className="text-sm text-slate-600">Points: <span className="font-semibold">{points}</span></div>
-                      <button className="px-3 py-2 rounded-lg bg-white border text-sm" onClick={resetGame}>Réinitialiser</button>
-                    </div>
-                  </div>
-
-                  <div className="mt-6">
-                    {/* Card with word */}
-                    <div className="mx-auto max-w-3xl">
-                      <div className="rounded-2xl border p-6 shadow-lg bg-gradient-to-br from-white to-sky-50">
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="flex-1">
-                            <div className="text-xs text-slate-500">Mot {currentIndex + 1} / {deck.length}</div>
-                            <div className="mt-4">
-                              <button
-                                onClick={() => setWordVisible(v => !v)}
-                                className="w-full text-left p-6 rounded-xl border-2 border-dashed hover:border-dashed hover:scale-[1.01] transition-all"
-                                style={{ minHeight: 120 }}
-                              >
-                                <div className="text-center text-2xl sm:text-3xl md:text-4xl font-extrabold tracking-tight">
-                                  {wordVisible ? (deck[currentIndex] ?? '') : '— CACHÉ —'}
-                                </div>
-                                <div className="text-xs text-slate-400 mt-2 text-center">Touchez pour {wordVisible ? 'cacher' : 'montrer'}</div>
-                              </button>
-                            </div>
-                          </div>
-
-                          {/* controls column on wide screens */}
-                          {isDesktop && (
-                            <div className="w-48 flex flex-col gap-3">
-                              <button onClick={() => handleResult('success')} className="py-3 rounded-lg bg-emerald-500 text-white font-semibold">Réussi</button>
-                              <button onClick={() => handleResult('fail')} className="py-3 rounded-lg bg-rose-500 text-white font-semibold">Échouer</button>
-                              <button onClick={() => handleResult('pass')} className="py-3 rounded-lg bg-amber-400 text-white font-semibold">Passer</button>
-                            </div>
-                          )}
-                        </div>
-
-                        {/* mobile controls */}
-                        {!isDesktop && (
-                          <div className="mt-6 grid grid-cols-3 gap-3">
-                            <button onClick={() => handleResult('success')} className="py-3 rounded-lg bg-emerald-500 text-white font-semibold">Réussi</button>
-                            <button onClick={() => handleResult('fail')} className="py-3 rounded-lg bg-rose-500 text-white font-semibold">Échouer</button>
-                            <button onClick={() => handleResult('pass')} className="py-3 rounded-lg bg-amber-400 text-white font-semibold">Passer</button>
-                          </div>
-                        )}
-
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </section>
+        {/* TITRE */}
+        {!selectedCategory && (
+          <div>
+            <h2 className="text-2xl font-bold">Bienvenue sur Juste Un</h2>
+            <p className="mt-2 text-slate-600">
+              Choisis une catégorie ci-dessous puis appuie sur <strong>Lancer</strong>.
+            </p>
           </div>
-        </div>
-      </main>
+        )}
 
-      {/* Bottom navigation (mobile-first) */}
-      <nav className="fixed bottom-4 left-1/2 -translate-x-1/2 w-[min(980px,calc(100%-32px))] md:hidden z-30">
-        <div className="bg-white/90 border rounded-3xl shadow-lg p-2 flex justify-between">
-          {CATEGORIES.slice(0,5).map((c) => (
-            <button key={c.key} onClick={() => { setActiveTab(c.key); setSelectedCategory(c.key === 'home' ? null : c); setShowEndModal(false) }} className={`flex-1 py-2 px-2 rounded-xl text-xs ${activeTab === c.key ? 'bg-sky-500 text-white' : 'text-slate-700'}`}>
-              <div className="text-center font-medium">{c.name}</div>
+        {/* CATEGORIES EN HAUT */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          {CATEGORIES.filter(c => c.key !== "home").map(c => (
+            <button
+              key={c.key}
+              onClick={() => { 
+                setSelectedCategory(c); 
+                setActiveTab(c.key); 
+              }}
+              className={`p-4 rounded-xl border shadow-sm text-center ${
+                selectedCategory?.key === c.key
+                  ? "bg-sky-500 text-white border-sky-600"
+                  : "bg-white text-slate-700"
+              }`}
+            >
+              <h3 className="text-sm font-semibold">{c.name}</h3>
+              <p className="text-xs opacity-80 mt-1">{c.words.length} mots</p>
             </button>
           ))}
         </div>
-      </nav>
+
+        {/* BLOC CHOIX RAPIDE — HORIZONTAL */}
+        <div className="w-full bg-white/80 rounded-xl border p-5 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h3 className="font-semibold">Choix rapide</h3>
+            <p className="text-xs text-slate-600">Sélectionne une catégorie puis lance.</p>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <button
+              onClick={startGame}
+              disabled={!selectedCategory}
+              className="px-5 py-2 bg-sky-600 text-white text-sm rounded-lg shadow-sm disabled:bg-slate-300"
+            >
+              Lancer
+            </button>
+            <button
+              onClick={resetGame}
+              className="px-5 py-2 bg-white text-sm border rounded-lg shadow-sm"
+            >
+              Reset
+            </button>
+          </div>
+        </div>
+
+        {/* STATS */}
+        <div className="w-full bg-white/80 rounded-xl border p-4 shadow-sm text-sm flex flex-wrap justify-between">
+          <p>Statut : <span className="font-semibold">{message}</span></p>
+          <p>Points : <span className="font-semibold">{points}</span></p>
+          <p>Cartes restantes : <span className="font-semibold">{cardsRemaining}</span></p>
+        </div>
+
+        {/* RÈGLES COMPLETES — BAS DE PAGE */}
+        <div className="w-full bg-gradient-to-r from-sky-50 to-white rounded-xl border p-5 shadow-sm">
+          <h4 className="font-semibold text-lg mb-2">Règles complètes</h4>
+          <ul className="text-sm text-slate-700 space-y-2 leading-relaxed">
+            <li>• Le joueur actif doit deviner le mot.</li>
+            <li>• Chaque autre joueur écrit un indice unique.</li>
+            <li>• Les indices identiques sont supprimés.</li>
+            <li>• Réussi : +1 point.</li>
+            <li>• Raté : -2 cartes.</li>
+            <li>• Passé : -1 carte.</li>
+            <li>• La partie dure 13 cartes. Objectif : garder un maximum.</li>
+          </ul>
+        </div>
+
+      </div>
+    )}
+
+    {/* ==================== PARTIE EN COURS ==================== */}
+  {gameStarted && selectedCategory && (
+  <div className="w-full min-h-[85vh] flex flex-col justify-start px-4 sm:px-8 py-10">
+
+    {/* HEADER CENTRÉ */}
+    <div className="w-full flex flex-col items-center text-center gap-2 mb-10 mt-10">
+      <h2 className="text-5xl md:text-6xl  font-bold text-slate-800">{selectedCategory.name}</h2>
+      <p className="text-sm text-slate-500">{deck.length} mots dans la sélection</p>
+
+      <div className="flex items-center gap-3 mt-3">
+        <span className="px-4 py-1 rounded-full bg-slate-200 text-sm font-semibold">
+          Cartes : {cardsRemaining}
+        </span>
+        <span className="px-4 py-1 rounded-full bg-sky-200 text-sky-800 text-sm font-semibold">
+          Points : {points}
+        </span>
+      </div>
+    </div>
+
+    {/* BLOC CENTRAL CENTRÉ */}
+    <div className="w-full flex flex-col items-center gap-10">
+
+      {/* CARTE AGRANDIE */}
+      <button
+        onClick={() => setWordVisible(v => !v)}
+        className="w-full max-w-xl py-14 sm:py-20 rounded-2xl border border-slate-200 bg-white shadow text-center"
+      >
+        <div className="text-4xl sm:text-6xl font-black tracking-wide text-slate-900">
+          {wordVisible ? deck[currentIndex] : "— CACHÉ —"}
+        </div>
+        <p className="text-xs text-slate-400 mt-3">
+          Cliquer pour {wordVisible ? "cacher" : "afficher"}
+        </p>
+      </button>
+
+      {/* BOUTONS DESCENDUS + ESPACÉS */}
+      <div className="grid grid-cols-3 gap-6 w-full max-w-md">
+        <button 
+          onClick={() => handleResult("success")}
+          className="py-5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-base shadow"
+        >
+          Réussi
+        </button>
+
+        <button 
+          onClick={() => handleResult("fail")}
+          className="py-5 rounded-xl bg-rose-500 hover:bg-rose-600 text-white font-bold text-base shadow"
+        >
+          Échouer
+        </button>
+
+        <button 
+          onClick={() => handleResult("pass")}
+          className="py-5 rounded-xl bg-amber-400 hover:bg-amber-500 text-white font-bold text-base shadow"
+        >
+          Passer
+        </button>
+      </div>
+
+    </div>
+
+  </div>
+)}
+
+
+  </div>
+</main>
+
+
+
+     
 
       {/* End of game modal */}
       {showEndModal && (
@@ -352,8 +344,23 @@ export default function Page() {
 
             <div className="mt-6 flex gap-3 justify-end">
               <button className="px-4 py-2 rounded-lg border" onClick={() => { setShowEndModal(false); }}>Fermer</button>
-              <button className="px-4 py-2 rounded-lg bg-sky-600 text-white" onClick={() => { resetGame(); setGameStarted(true); setShowEndModal(false); }}>Rejouer</button>
-            </div>
+          <button
+  className="px-4 py-2 rounded-lg bg-sky-600 text-white"
+  onClick={() => {
+    if (selectedCategory) {
+      startNewDeck();   // <-- IMPORTANT : repioche un deck neuf
+    }
+    setPoints(0);
+    setCardsRemaining(13);
+    setCurrentIndex(0);
+    setWordVisible(true);
+    setShowEndModal(false);
+    setGameStarted(true); // recommence immédiatement
+  }}
+>
+  Rejouer
+</button>
+   </div>
           </div>
         </div>
       )}
