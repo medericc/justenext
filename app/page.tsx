@@ -86,7 +86,7 @@ function startNewDeck() {
   setCurrentIndex(0)
   setPoints(0)
   setCardsRemaining(13)
-  setWordVisible(true)
+  setWordVisible(false)
   setMessage('Prêt à lancer la partie')
 }
  useEffect(() => {
@@ -110,7 +110,7 @@ function startGame() {
   setCurrentIndex(0)
   setPoints(0)
   setCardsRemaining(13)
-  setWordVisible(true)
+  setWordVisible(false)
 
   setGameStarted(true)
   setMessage('Partie en cours')
@@ -154,7 +154,7 @@ function startGame() {
     setPoints(nextPoints)
     setCardsRemaining(nextCards)
     setCurrentIndex(nextIndex)
-    setWordVisible(true)
+    setWordVisible(false)
   }
 
   const windowTitle = useMemo(() => {
